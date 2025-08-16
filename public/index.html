@@ -28,6 +28,7 @@
         <h1>Farcaster Flappy</h1>
         <button id="playBtn">Play Game</button>
         <button id="signinBtn" class="secondary">Sign In with Farcaster</button>
+        <button id="signoutBtn" class="secondary" style="display:none;">Sign Out</button>
         <p id="signedInFid" style="display:none; margin-top: 10px;"></p>
       </div>
       <div id="game-over-screen" class="game-overlay" style="display:none;">
@@ -51,6 +52,7 @@ let fid = null;
 
 // UI Elements
 const signinBtn = document.getElementById('signinBtn');
+const signoutBtn = document.getElementById('signoutBtn');
 const playBtn = document.getElementById('playBtn');
 const restartBtn = document.getElementById('restartBtn');
 const startScreen = document.getElementById('start-screen');
@@ -59,6 +61,18 @@ const finalScoreDisplay = document.getElementById('final-score');
 const signedInFidDisplay = document.getElementById('signedInFid');
 const leaderboardContainer = document.getElementById('leaderboard');
 
+function updateLoginUI(isLoggedIn) {
+  if (isLoggedIn) {
+    signinBtn.style.display = 'none';
+    signoutBtn.style.display = 'block';
+    signedInFidDisplay.textContent = `Signed in as FID: ${fid}`;
+    signedInFidDisplay.style.display = 'block';
+  } else {
+    signinBtn.style.display = 'block';
+    signoutBtn.style.display = 'none';
+    signedInFidDisplay.style.display = 'none';
+  }
+}
 
 signinBtn.onclick = async () => {
   try {
@@ -69,12 +83,12 @@ signinBtn.onclick = async () => {
     
     // Decode the JWT to get the user's FID from the 'sub' claim.
     const payload = JSON.parse(atob(token.split('.')[1]));
-    fid = payload.sub;
+    const userFid = payload.sub;
 
-    if (fid) {
-      signinBtn.style.display = 'none';
-      signedInFidDisplay.textContent = `Signed in as FID: ${fid}`;
-      signedInFidDisplay.style.display = 'block';
+    if (userFid) {
+      fid = userFid;
+      localStorage.setItem('userFid', fid);
+      updateLoginUI(true);
     } else {
       throw new Error("Could not determine FID from token.");
     }
@@ -86,6 +100,20 @@ signinBtn.onclick = async () => {
     }
   }
 };
+
+signoutBtn.onclick = () => {
+  localStorage.removeItem('userFid');
+  fid = null;
+  updateLoginUI(false);
+};
+
+function checkLoginState() {
+  const storedFid = localStorage.getItem('userFid');
+  if (storedFid) {
+    fid = parseInt(storedFid, 10);
+    updateLoginUI(true);
+  }
+}
 
 async function loadLeaderboard(){
   try {
@@ -138,6 +166,7 @@ restartBtn.onclick = () => {
 
 // Initial Load
 loadLeaderboard();
+checkLoginState();
 </script>
 </body>
 </html>
