@@ -136,7 +136,11 @@ async function loadLeaderboard(){
     leaderboardContainer.innerHTML =
       '<h3>Leaderboard</h3>' +
       (lb.length > 0
-        ? lb.map((e,i)=>`<div class="lb-row"><span>#${i+1} FID ${e.fid}</span> <strong>${e.score}</strong></div>`).join('')
+        ? lb.map((e,i) => {
+            const isCurrentUser = fid && e.fid === fid;
+            const rowClass = isCurrentUser ? 'lb-row current-user' : 'lb-row';
+            return `<div class="${rowClass}"><span>#${i+1} FID ${e.fid}</span> <strong>${e.score}</strong></div>`;
+          }).join('')
         : '<div class="lb-row"><span>No scores yet!</span></div>'
       );
   } catch (e) {

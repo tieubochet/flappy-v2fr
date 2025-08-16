@@ -108,6 +108,16 @@ button.secondary {
 .lb-row:last-child { border-bottom:none; }
 .lb-row span:first-child { color: #aaa; }
 
+.lb-row.current-user {
+  background-color: rgba(109, 93, 252, 0.2);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 6px;
+}
+.lb-row.current-user span:first-child {
+  color: #d1caff;
+}
+
 .home-btn {
   position: absolute;
   top: 15px;
