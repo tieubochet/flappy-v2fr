@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Farcaster Flappy</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="fc:miniapp" content='{
+    "version":"1",
+    "imageUrl":"https://placehold.co/1200x630/png",
+    "button":{"title":"Play","action":{
+      "type":"launch_frame",
+      "name":"Farcaster Flappy",
+      "url":"https://flappy-v2fr.vercel.app",
+      "splashImageUrl":"https://placehold.co/512/png",
+      "splashBackgroundColor":"#000000"
+    }}
+  }'>
+</head>
+<body>
+  <div id="container">
+    <canvas id="gameCanvas" width="424" height="695"></canvas>
+    <div id="ui">
+      <div class="row">
+        <button id="signinBtn">Sign In with Farcaster</button>
+        <button id="restartBtn" style="display:none;">Restart</button>
+      </div>
+      <div id="scoreDisplay">Score: 0</div>
+      <div id="leaderboard"></div>
+    </div>
+  </div>
+
+<script type="module">
+import { sdk } from 'https://esm.sh/@farcaster/miniapp-sdk'
+
+await sdk.actions.ready();
+
+let fid = null;
+let session = null;
+
+const signinBtn = document.getElementById('signinBtn');
+signinBtn.onclick = async () => {
+  try {
+    const nonce = Math.random().toString(36).slice(2);
+    const res = await sdk.actions.signIn({ nonce, acceptAuthAddress: true });
+    fid = res.fid;
+    session = res.session;
+    signinBtn.style.display = 'none';
+  } catch (e) {
+    alert('Sign in failed: ' + e.message);
+  }
+};
+
+// Load leaderboard
+async function loadLeaderboard(){
+  try {
+    const res = await fetch('/api/leaderboard');
+    const lb = await res.json();
+    document.getElementById('leaderboard').innerHTML =
+      '<h3>Leaderboard</h3>' +
+      lb.map((e,i)=>`<div class="lb-row"><span>${i+1}.</span> <span>FID ${e.fid}</span> <strong>${e.score}</strong></div>`).join('');
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+import { startGame } from './flappy.js';
+const restartBtn = document.getElementById('restartBtn');
+
+function start(){
+  restartBtn.style.display = 'none';
+  startGame(async (finalScore) => {
+    restartBtn.style.display = 'inline-block';
+    if (fid) {
+      try {
+        await fetch('/api/score', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ fid, score: finalScore })
+        });
+        await loadLeaderboard();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, (scoreNow)=>{
+    document.getElementById('scoreDisplay').textContent = 'Score: ' + scoreNow;
+  });
+}
+
+restartBtn.onclick = () => start();
+
+loadLeaderboard();
+start();
+</script>
+</body>
+</html>
