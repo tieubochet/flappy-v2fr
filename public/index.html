@@ -48,7 +48,6 @@ import { startGame } from './flappy.js';
 await sdk.actions.ready();
 
 let fid = null;
-let session = null;
 
 // UI Elements
 const signinBtn = document.getElementById('signinBtn');
@@ -63,15 +62,28 @@ const leaderboardContainer = document.getElementById('leaderboard');
 
 signinBtn.onclick = async () => {
   try {
-    const nonce = Math.random().toString(36).slice(2);
-    const res = await sdk.actions.signIn({ nonce, acceptAuthAddress: true });
-    fid = res.fid;
-    session = res.session;
-    signinBtn.style.display = 'none';
-    signedInFidDisplay.textContent = `Signed in as FID: ${fid}`;
-    signedInFidDisplay.style.display = 'block';
+    const { token } = await sdk.quickAuth.getToken();
+    if (!token) {
+      throw new Error("Authentication token could not be retrieved.");
+    }
+    
+    // Decode the JWT to get the user's FID from the 'sub' claim.
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    fid = payload.sub;
+
+    if (fid) {
+      signinBtn.style.display = 'none';
+      signedInFidDisplay.textContent = `Signed in as FID: ${fid}`;
+      signedInFidDisplay.style.display = 'block';
+    } else {
+      throw new Error("Could not determine FID from token.");
+    }
   } catch (e) {
-    alert('Sign in failed: ' + e.message);
+    if (e.name !== 'RejectedByUser') {
+      alert('Sign in failed: ' + e.message);
+    } else {
+      console.log('User cancelled sign in');
+    }
   }
 };
 
