@@ -84,18 +84,20 @@ signinBtn.onclick = async () => {
     // This will trigger the sign-in prompt if needed
     await sdk.quickAuth.getToken();
     
-    // The SDK's context object should now contain the authenticated user's details
-    const user = sdk.context.user;
+    // Await the context to ensure user data is loaded
+    const context = await sdk.context;
+    const user = context.user;
 
-    if (user && user.fid && user.username) {
+    if (user && user.fid) {
       fid = user.fid;
-      username = user.username;
+      // Handle optional username gracefully
+      username = user.username || `user-${user.fid}`; 
       localStorage.setItem('userFid', fid);
       localStorage.setItem('username', username);
       updateLoginUI(true);
       await loadLeaderboard();
     } else {
-      throw new Error('User details (FID or Username) not available after sign-in.');
+      throw new Error('User details (FID) not available after sign-in.');
     }
   } catch (e) {
     if (e.name !== 'RejectedByUser') {
