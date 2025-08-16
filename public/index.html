@@ -31,7 +31,7 @@
         <button id="playBtn">Play Game</button>
         <button id="signinBtn" class="secondary">Sign In with Farcaster</button>
         <button id="signoutBtn" class="secondary" style="display:none;">Sign Out</button>
-        <p id="signedInFid" style="display:none; margin-top: 10px;"></p>
+        <p id="signedInUser" style="display:none; margin-top: 10px;"></p>
       </div>
       <div id="game-over-screen" class="game-overlay" style="display:none;">
         <h2>Game Over</h2>
@@ -51,6 +51,7 @@ import { startGame } from './flappy.js';
 await sdk.actions.ready();
 
 let fid = null;
+let username = null;
 let currentGameInstance = null;
 
 // UI Elements
@@ -62,39 +63,39 @@ const homeBtn = document.getElementById('homeBtn');
 const startScreen = document.getElementById('start-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
 const finalScoreDisplay = document.getElementById('final-score');
-const signedInFidDisplay = document.getElementById('signedInFid');
+const signedInUserDisplay = document.getElementById('signedInUser');
 const leaderboardContainer = document.getElementById('leaderboard');
 
 function updateLoginUI(isLoggedIn) {
   if (isLoggedIn) {
     signinBtn.style.display = 'none';
     signoutBtn.style.display = 'block';
-    signedInFidDisplay.textContent = `Signed in as FID: ${fid}`;
-    signedInFidDisplay.style.display = 'block';
+    signedInUserDisplay.textContent = `Signed in as @${username}`;
+    signedInUserDisplay.style.display = 'block';
   } else {
     signinBtn.style.display = 'block';
     signoutBtn.style.display = 'none';
-    signedInFidDisplay.style.display = 'none';
+    signedInUserDisplay.style.display = 'none';
   }
 }
 
 signinBtn.onclick = async () => {
   try {
-    const { token } = await sdk.quickAuth.getToken();
-    if (!token) {
-      throw new Error("Authentication token could not be retrieved.");
-    }
+    // This will trigger the sign-in prompt if needed
+    await sdk.quickAuth.getToken();
     
-    // Decode the JWT to get the user's FID from the 'sub' claim.
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const userFid = payload.sub;
+    // The SDK's context object should now contain the authenticated user's details
+    const user = sdk.context.user;
 
-    if (userFid) {
-      fid = userFid;
+    if (user && user.fid && user.username) {
+      fid = user.fid;
+      username = user.username;
       localStorage.setItem('userFid', fid);
+      localStorage.setItem('username', username);
       updateLoginUI(true);
+      await loadLeaderboard();
     } else {
-      throw new Error("Could not determine FID from token.");
+      throw new Error('User details (FID or Username) not available after sign-in.');
     }
   } catch (e) {
     if (e.name !== 'RejectedByUser') {
@@ -107,8 +108,11 @@ signinBtn.onclick = async () => {
 
 signoutBtn.onclick = () => {
   localStorage.removeItem('userFid');
+  localStorage.removeItem('username');
   fid = null;
+  username = null;
   updateLoginUI(false);
+  loadLeaderboard(); // Reload leaderboard to remove highlight
 };
 
 homeBtn.onclick = () => {
@@ -123,8 +127,10 @@ homeBtn.onclick = () => {
 
 function checkLoginState() {
   const storedFid = localStorage.getItem('userFid');
-  if (storedFid) {
+  const storedUsername = localStorage.getItem('username');
+  if (storedFid && storedUsername) {
     fid = parseInt(storedFid, 10);
+    username = storedUsername;
     updateLoginUI(true);
   }
 }
@@ -139,7 +145,7 @@ async function loadLeaderboard(){
         ? lb.map((e,i) => {
             const isCurrentUser = fid && e.fid === fid;
             const rowClass = isCurrentUser ? 'lb-row current-user' : 'lb-row';
-            return `<div class="${rowClass}"><span>#${i+1} FID ${e.fid}</span> <strong>${e.score}</strong></div>`;
+            return `<div class="${rowClass}"><span>#${i+1} @${e.username || 'user'}</span> <strong>${e.score}</strong></div>`;
           }).join('')
         : '<div class="lb-row"><span>No scores yet!</span></div>'
       );
@@ -155,17 +161,19 @@ function runGame() {
       finalScoreDisplay.textContent = 'Score: ' + finalScore;
       gameOverScreen.style.display = 'flex';
       homeBtn.style.display = 'none';
-      if (fid) {
+      if (fid && username) {
         try {
           await fetch('/api/score', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ fid, score: finalScore })
+            body: JSON.stringify({ fid, username, score: finalScore })
           });
           await loadLeaderboard();
         } catch (e) {
           console.error('Failed to submit score', e);
         }
+      } else {
+        await loadLeaderboard();
       }
     },
     // onScore callback (currently handled on canvas)
@@ -186,8 +194,8 @@ restartBtn.onclick = () => {
 };
 
 // Initial Load
-loadLeaderboard();
 checkLoginState();
+loadLeaderboard();
 </script>
 </body>
 </html>

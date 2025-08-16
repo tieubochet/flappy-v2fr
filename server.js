@@ -17,18 +17,24 @@ const dbPath = path.join(__dirname, 'db.json');
 if(!fs.existsSync(dbPath)) fs.writeFileSync(dbPath, '[]');
 
 app.post('/api/score', (req, res) => {
-  const { fid, score } = req.body || {};
-  if (typeof fid !== 'number' || typeof score !== 'number') {
+  const { fid, score, username } = req.body || {};
+  if (typeof fid !== 'number' || typeof score !== 'number' || !username || typeof username !== 'string') {
     return res.status(400).json({ ok: false, error: 'Invalid payload' });
   }
   let data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-  // Keep highest score per fid
-  const existing = data.find(x => x.fid === fid);
-  if (!existing || score > existing.score) {
-    if (existing) existing.score = score;
-    else data.push({ fid, score });
-    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+  
+  const playerIndex = data.findIndex(p => p.fid === fid);
+
+  if (playerIndex !== -1) {
+    // Player exists, update username and update score only if it's higher
+    data[playerIndex].username = username;
+    data[playerIndex].score = Math.max(data[playerIndex].score, score);
+  } else {
+    // New player, add to leaderboard
+    data.push({ fid, username, score });
   }
+  
+  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
   res.json({ ok: true });
 });
 

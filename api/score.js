@@ -12,8 +12,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { fid, score } = req.body || {};
-    if (typeof fid !== 'number' || typeof score !== 'number') {
+    const { fid, score, username } = req.body || {};
+    if (typeof fid !== 'number' || typeof score !== 'number' || !username || typeof username !== 'string') {
       return res.status(400).json({ ok: false, error: 'Invalid payload' });
     }
 
@@ -23,11 +23,12 @@ export default async function handler(req, res) {
     const playerIndex = leaderboard.findIndex(p => p.fid === fid);
 
     if (playerIndex !== -1) {
-      // Player exists, update score only if it's higher
+      // Player exists, update score only if it's higher and update username
       leaderboard[playerIndex].score = Math.max(leaderboard[playerIndex].score, score);
+      leaderboard[playerIndex].username = username;
     } else {
       // New player, add to leaderboard
-      leaderboard.push({ fid, score });
+      leaderboard.push({ fid, username, score });
     }
 
     await redis.set('leaderboard', JSON.stringify(leaderboard));
