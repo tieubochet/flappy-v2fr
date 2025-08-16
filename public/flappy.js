@@ -2,10 +2,10 @@ export function startGame(onGameOver, onScore){
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
 
-  let birdY = canvas.height/2, gravity = 0.5, lift = -9, velocity = 0;
+  let birdY = canvas.height/2, gravity = 0.35, lift = -7, velocity = 0;
   let pipes = [], score = 0, frame = 0;
   let playing = true;
-  const gap = 140;
+  const gap = 180;
   const pipeWidth = 60;
   const birdX = 80;
   const birdR = 14;
@@ -74,11 +74,11 @@ export function startGame(onGameOver, onScore){
 
   function update(){
     frame++;
-    if (frame % 90 === 0) spawnPipe();
+    if (frame % 120 === 0) spawnPipe();
 
     // move pipes
     for (const p of pipes){
-      p.x -= 2.8;
+      p.x -= 2.2;
       // scoring
       if (!p.passed && p.x + pipeWidth < birdX){
         p.passed = true;
