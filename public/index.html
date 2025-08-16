@@ -1,10 +1,12 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Farcaster Flappy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <meta name="fc:miniapp" content='{
     "version":"1",
@@ -20,26 +22,45 @@
 </head>
 <body>
   <div id="container">
-    <canvas id="gameCanvas" width="424" height="695"></canvas>
-    <div id="ui">
-      <div class="row">
-        <button id="signinBtn">Sign In with Farcaster</button>
-        <button id="restartBtn" style="display:none;">Restart</button>
+    <div id="game-wrapper">
+      <canvas id="gameCanvas" width="424" height="695"></canvas>
+      <div id="start-screen" class="game-overlay">
+        <h1>Farcaster Flappy</h1>
+        <button id="playBtn">Play Game</button>
+        <button id="signinBtn" class="secondary">Sign In with Farcaster</button>
+        <p id="signedInFid" style="display:none; margin-top: 10px;"></p>
       </div>
-      <div id="scoreDisplay">Score: 0</div>
+      <div id="game-over-screen" class="game-overlay" style="display:none;">
+        <h2>Game Over</h2>
+        <div id="final-score">Score: 0</div>
+        <button id="restartBtn">Restart</button>
+      </div>
+    </div>
+    <div id="ui">
       <div id="leaderboard"></div>
     </div>
   </div>
 
 <script type="module">
 import { sdk } from 'https://esm.sh/@farcaster/miniapp-sdk'
+import { startGame } from './flappy.js';
 
 await sdk.actions.ready();
 
 let fid = null;
 let session = null;
 
+// UI Elements
 const signinBtn = document.getElementById('signinBtn');
+const playBtn = document.getElementById('playBtn');
+const restartBtn = document.getElementById('restartBtn');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over-screen');
+const finalScoreDisplay = document.getElementById('final-score');
+const signedInFidDisplay = document.getElementById('signedInFid');
+const leaderboardContainer = document.getElementById('leaderboard');
+
+
 signinBtn.onclick = async () => {
   try {
     const nonce = Math.random().toString(36).slice(2);
@@ -47,52 +68,64 @@ signinBtn.onclick = async () => {
     fid = res.fid;
     session = res.session;
     signinBtn.style.display = 'none';
+    signedInFidDisplay.textContent = `Signed in as FID: ${fid}`;
+    signedInFidDisplay.style.display = 'block';
   } catch (e) {
     alert('Sign in failed: ' + e.message);
   }
 };
 
-// Load leaderboard
 async function loadLeaderboard(){
   try {
     const res = await fetch('/api/leaderboard');
     const lb = await res.json();
-    document.getElementById('leaderboard').innerHTML =
+    leaderboardContainer.innerHTML =
       '<h3>Leaderboard</h3>' +
-      lb.map((e,i)=>`<div class="lb-row"><span>${i+1}.</span> <span>FID ${e.fid}</span> <strong>${e.score}</strong></div>`).join('');
+      (lb.length > 0
+        ? lb.map((e,i)=>`<div class="lb-row"><span>#${i+1} FID ${e.fid}</span> <strong>${e.score}</strong></div>`).join('')
+        : '<div class="lb-row"><span>No scores yet!</span></div>'
+      );
   } catch (e) {
-    console.error(e);
+    console.error('Failed to load leaderboard', e);
   }
 }
 
-import { startGame } from './flappy.js';
-const restartBtn = document.getElementById('restartBtn');
-
-function start(){
-  restartBtn.style.display = 'none';
-  startGame(async (finalScore) => {
-    restartBtn.style.display = 'inline-block';
-    if (fid) {
-      try {
-        await fetch('/api/score', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ fid, score: finalScore })
-        });
-        await loadLeaderboard();
-      } catch (e) {
-        console.error(e);
+function runGame() {
+  startGame(
+    // onGameOver callback
+    async (finalScore) => {
+      finalScoreDisplay.textContent = 'Score: ' + finalScore;
+      gameOverScreen.style.display = 'flex';
+      if (fid) {
+        try {
+          await fetch('/api/score', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ fid, score: finalScore })
+          });
+          await loadLeaderboard();
+        } catch (e) {
+          console.error('Failed to submit score', e);
+        }
       }
-    }
-  }, (scoreNow)=>{
-    document.getElementById('scoreDisplay').textContent = 'Score: ' + scoreNow;
-  });
+    },
+    // onScore callback (currently handled on canvas)
+    (scoreNow) => {}
+  );
 }
 
-restartBtn.onclick = () => start();
+playBtn.onclick = () => {
+  startScreen.style.display = 'none';
+  runGame();
+};
 
+restartBtn.onclick = () => {
+  gameOverScreen.style.display = 'none';
+  runGame();
+};
+
+// Initial Load
 loadLeaderboard();
-start();
 </script>
 </body>
 </html>
