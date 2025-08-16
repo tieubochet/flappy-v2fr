@@ -1,3 +1,4 @@
+
 * { box-sizing: border-box; }
 body {
   margin:0;
@@ -106,3 +107,19 @@ button.secondary {
 }
 .lb-row:last-child { border-bottom:none; }
 .lb-row span:first-child { color: #aaa; }
+
+.home-btn {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid white;
+  padding: 6px 14px;
+  margin-top: 0;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+.home-btn:hover {
+  background: rgba(0, 0, 0, 0.6);
+}

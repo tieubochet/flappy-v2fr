@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -24,6 +25,7 @@
   <div id="container">
     <div id="game-wrapper">
       <canvas id="gameCanvas" width="424" height="695"></canvas>
+      <button id="homeBtn" class="home-btn" style="display: none;">Home</button>
       <div id="start-screen" class="game-overlay">
         <h1>Farcaster Flappy</h1>
         <button id="playBtn">Play Game</button>
@@ -49,12 +51,14 @@ import { startGame } from './flappy.js';
 await sdk.actions.ready();
 
 let fid = null;
+let currentGameInstance = null;
 
 // UI Elements
 const signinBtn = document.getElementById('signinBtn');
 const signoutBtn = document.getElementById('signoutBtn');
 const playBtn = document.getElementById('playBtn');
 const restartBtn = document.getElementById('restartBtn');
+const homeBtn = document.getElementById('homeBtn');
 const startScreen = document.getElementById('start-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
 const finalScoreDisplay = document.getElementById('final-score');
@@ -107,6 +111,16 @@ signoutBtn.onclick = () => {
   updateLoginUI(false);
 };
 
+homeBtn.onclick = () => {
+  if (currentGameInstance) {
+    currentGameInstance.stop();
+    currentGameInstance = null;
+  }
+  startScreen.style.display = 'flex';
+  gameOverScreen.style.display = 'none';
+  homeBtn.style.display = 'none';
+};
+
 function checkLoginState() {
   const storedFid = localStorage.getItem('userFid');
   if (storedFid) {
@@ -131,11 +145,12 @@ async function loadLeaderboard(){
 }
 
 function runGame() {
-  startGame(
+  currentGameInstance = startGame(
     // onGameOver callback
     async (finalScore) => {
       finalScoreDisplay.textContent = 'Score: ' + finalScore;
       gameOverScreen.style.display = 'flex';
+      homeBtn.style.display = 'none';
       if (fid) {
         try {
           await fetch('/api/score', {
@@ -156,11 +171,13 @@ function runGame() {
 
 playBtn.onclick = () => {
   startScreen.style.display = 'none';
+  homeBtn.style.display = 'block';
   runGame();
 };
 
 restartBtn.onclick = () => {
   gameOverScreen.style.display = 'none';
+  homeBtn.style.display = 'block';
   runGame();
 };
 

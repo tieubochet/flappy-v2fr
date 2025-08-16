@@ -1,3 +1,4 @@
+
 export function startGame(onGameOver, onScore){
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
@@ -5,6 +6,7 @@ export function startGame(onGameOver, onScore){
   let birdY = canvas.height/2, gravity = 0.35, lift = -7, velocity = 0;
   let pipes = [], score = 0, frame = 0;
   let playing = true;
+  let requestStop = false; // Flag to stop the game externally
   const gap = 180;
   const pipeWidth = 60;
   const birdX = 80;
@@ -13,8 +15,17 @@ export function startGame(onGameOver, onScore){
   function flap(){
     if (playing) velocity = lift;
   }
-  document.addEventListener('keydown', (e) => { if(e.code==='Space') flap(); });
-  canvas.addEventListener('pointerdown', () => flap());
+
+  const handleSpacebar = (e) => { if(e.code==='Space') flap(); };
+  const handlePointer = () => flap();
+
+  document.addEventListener('keydown', handleSpacebar);
+  canvas.addEventListener('pointerdown', handlePointer);
+
+  function cleanupListeners() {
+    document.removeEventListener('keydown', handleSpacebar);
+    canvas.removeEventListener('pointerdown', handlePointer);
+  }
 
   function spawnPipe(){
     const minTop = 50;
@@ -124,6 +135,11 @@ export function startGame(onGameOver, onScore){
   }
 
   function loop(){
+    if (requestStop) {
+      cleanupListeners();
+      return;
+    }
+
     drawBackground();
     drawPipes();
     drawGround();
@@ -134,10 +150,17 @@ export function startGame(onGameOver, onScore){
       update();
       requestAnimationFrame(loop);
     } else {
+      cleanupListeners();
       onGameOver(score);
     }
   }
 
   spawnPipe();
   loop();
+
+  return {
+    stop: () => {
+      requestStop = true;
+    }
+  };
 }
